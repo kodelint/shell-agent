@@ -1,0 +1,12 @@
+ai:
+  default_model: "llama2-7b"
+  model_path: "~/.shell-agent/models"
+  timeout: 30
+
+logging:
+  level: "info"
+  file: ""
+
+interactive:
+  confirm_commands: true
+  show_explanation: true
