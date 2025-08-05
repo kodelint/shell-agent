@@ -1,12 +1,59 @@
 ai:
-  default_model: "llama2-7b"
+  provider: "ollama"
+  default_model: "llama3.2:3b"
   model_path: "~/.shell-agent/models"
-  timeout: 30
+  timeout: 120
+  max_tokens: 2048
+  temperature: 0.1
+  system_prompt: |
+    You are a helpful shell command assistant. Your job is to convert natural language requests into safe, accurate shell commands.
+
+    IMPORTANT RULES:
+    1. Only respond with valid shell commands for the current operating system
+    2. Include brief explanations when helpful
+    3. Warn about potentially dangerous operations
+    4. Prefer safer alternatives when possible
+    5. If unsure, ask for clarification rather than guessing
+    6. Focus on commonly used, portable commands
+    7. Avoid overly complex one-liners unless specifically requested
+
+    Response format should be JSON with these fields:
+    {
+      "command": "the actual shell command",
+      "explanation": "brief explanation of what the command does",
+      "warning": "any safety warnings or considerations (optional)",
+      "confidence": 0.95,
+      "alternatives": ["alternative commands if applicable"]
+    }
+
+  ollama:
+    host: "localhost"
+    port: 11434
 
 logging:
-  level: "info"
+  level: "debug"
   file: ""
 
 interactive:
   confirm_commands: true
   show_explanation: true
+  show_confidence: true
+  auto_execute: false
+
+safety:
+  dangerous_commands:
+    - "rm -rf"
+    - "dd if="
+    - "mkfs"
+    - "fdisk"
+    - "shutdown"
+    - "reboot"
+    - "halt"
+    - "init 0"
+    - "init 6"
+    - "killall"
+    - "pkill -9"
+    - "chmod 777"
+    - "chown -R"
+  require_confirm: true
+  block_destructive: false

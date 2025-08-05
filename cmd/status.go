@@ -28,6 +28,12 @@ var (
 	modelOnly bool
 )
 
+func init() {
+	rootCmd.AddCommand(statusCmd)
+
+	statusCmd.Flags().BoolVar(&modelOnly, "model", false, "Show only model status")
+}
+
 func runStatus(cmd *cobra.Command, args []string) {
 	modelManager := ai.NewModelManager()
 	systemInfo := system.NewSystemInfo()
@@ -39,9 +45,4 @@ func runStatus(cmd *cobra.Command, args []string) {
 	}
 
 	output.PrintStatus(status)
-}
-
-func init() {
-	rootCmd.AddCommand(statusCmd)
-	statusCmd.Flags().BoolVar(&modelOnly, "model", false, "Show only model status")
 }

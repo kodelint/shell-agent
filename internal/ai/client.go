@@ -6,21 +6,32 @@ import (
 	"github.com/kodelint/shell-agent/internal/config"
 	"github.com/kodelint/shell-agent/internal/logger"
 	"github.com/sirupsen/logrus"
+	"runtime"
 	"strings"
 	"time"
 )
 
 type Client struct {
-	modelManager *ModelManager
-	config       *config.Config
-	logger       *logrus.Entry
+	ollamaClient  *OllamaClient
+	modelManager  *ModelManager
+	config        *config.Config
+	logger        *logrus.Entry
+	safetyChecker *SafetyChecker
 }
 
 type CommandResponse struct {
-	Command     string
-	Explanation string
-	Warning     string
-	Confidence  float64
+	Command      string   `json:"command"`
+	Explanation  string   `json:"explanation"`
+	Warning      string   `json:"warning"`
+	Confidence   float64  `json:"confidence"`
+	Alternatives []string `json:"alternatives,omitempty"`
+}
+
+// SafetyChecker validates commands for safety
+type SafetyChecker struct {
+	dangerousPatterns []string
+	config            *config.Config
+	logger            *logrus.Entry
 }
 
 func NewClient() (*Client, error) {
@@ -29,98 +40,140 @@ func NewClient() (*Client, error) {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	return &Client{
-		modelManager: NewModelManager(),
-		config:       cfg,
-		logger:       logger.GetLogger().WithField("component", "ai-client"),
-	}, nil
+	client := &Client{
+		ollamaClient:  NewOllamaClient(cfg),
+		modelManager:  NewModelManager(),
+		config:        cfg,
+		logger:        logger.GetLogger().WithField("component", "ai-client"),
+		safetyChecker: NewSafetyChecker(cfg),
+	}
+
+	return client, nil
+}
+
+func NewSafetyChecker(cfg *config.Config) *SafetyChecker {
+	return &SafetyChecker{
+		dangerousPatterns: cfg.Safety.DangerousCommands,
+		config:            cfg,
+		logger:            logger.GetLogger().WithField("component", "safety-checker"),
+	}
 }
 
 func (c *Client) GenerateCommand(input string) (*CommandResponse, error) {
-	c.logger.WithField("input", input).Debug("Generating command")
+	c.logger.WithField("input", input).Info("Generating command")
+
+	// Check if Ollama is available
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := c.ollamaClient.IsAvailable(ctx); err != nil {
+		return nil, fmt.Errorf("ollama service is not available: %w\n\nPlease ensure Ollama is installed and running:\n- Install: https://ollama.ai/download\n- Start: 'ollama serve'", err)
+	}
 
 	// Check if model is available
 	currentModel := c.modelManager.GetCurrentModel()
-	if currentModel == nil || !currentModel.Downloaded {
-		return nil, fmt.Errorf("no AI model available. Please run 'shell-agent download' first")
+	if currentModel == nil {
+		return nil, fmt.Errorf("no AI model configured. Please run 'shell-agent download' first")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(c.config.AI.Timeout)*time.Second)
+	// Verify model exists in Ollama
+	if !c.modelManager.IsModelAvailableInOllama(currentModel.Name) {
+		return nil, fmt.Errorf("model '%s' is not available in Ollama. Please run 'shell-agent download' to install it", currentModel.Name)
+	}
+
+	// Create context with timeout
+	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(c.config.AI.Timeout)*time.Second)
 	defer cancel()
 
-	// This is where you would integrate with your local AI model
-	// The context can be used for cancellation in actual AI model calls
-	// For now, we'll return a mock response based on the input
-	response := c.generateMockResponse(ctx, input)
+	// Enhance prompt with system context
+	enhancedPrompt := c.enhancePrompt(input)
 
-	c.logger.WithField("command", response.Command).Debug("Generated command")
+	// Generate command using Ollama
+	response, err := c.ollamaClient.Generate(ctx, currentModel.Name, enhancedPrompt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate command: %w", err)
+	}
+
+	// Apply safety checks
+	if c.config.Safety.RequireConfirm {
+		c.safetyChecker.CheckCommand(response)
+	}
+
+	c.logger.WithFields(logrus.Fields{
+		"command":    response.Command,
+		"confidence": response.Confidence,
+		"model":      currentModel.Name,
+	}).Info("Generated command successfully")
 
 	return response, nil
 }
 
-func (c *Client) generateMockResponse(ctx context.Context, input string) *CommandResponse {
-	// Mock AI response generation - replace with actual AI model integration
-	// The context parameter would be used for actual AI model calls for cancellation
-	command, explanation, warning := c.parseInputToCommand(input)
+func (c *Client) enhancePrompt(input string) string {
+	// Add system context
+	osInfo := runtime.GOOS
+	prompt := fmt.Sprintf(`Operating System: %s
 
-	return &CommandResponse{
-		Command:     command,
-		Explanation: explanation,
-		Warning:     warning,
-		Confidence:  0.85,
-	}
+User Request: %s
+
+Please provide a shell command that accomplishes this request. Consider:
+1. The operating system is %s
+2. Use safe, commonly available commands
+3. Provide clear explanations
+4. Warn about any potential risks
+5. Suggest alternatives if helpful
+
+Respond in JSON format as specified in the system prompt.`, osInfo, input, osInfo)
+
+	return prompt
 }
 
-func (c *Client) parseInputToCommand(input string) (string, string, string) {
-	// Simple pattern matching for demo - replace with AI model
-	patterns := map[string]struct {
-		command     string
-		explanation string
-		warning     string
-	}{
-		"list files": {
-			command:     "ls -la",
-			explanation: "Lists all files and directories with detailed information including permissions, size, and modification time.",
-			warning:     "",
-		},
-		"list all files": {
-			command:     "ls -la",
-			explanation: "Lists all files and directories with detailed information including permissions, size, and modification time.",
-			warning:     "",
-		},
-		"find python files": {
-			command:     "find . -name '*.py' -type f",
-			explanation: "Recursively searches for all Python files (.py extension) in the current directory and subdirectories.",
-			warning:     "",
-		},
-		"disk usage": {
-			command:     "du -sh .",
-			explanation: "Shows the disk usage of the current directory in human-readable format.",
-			warning:     "",
-		},
-		"compress folder": {
-			command:     "tar -czf archive.tar.gz .",
-			explanation: "Creates a compressed tar.gz archive of the current directory.",
-			warning:     "This will create an archive of the entire current directory. Make sure you're in the right location.",
-		},
+func (s *SafetyChecker) CheckCommand(response *CommandResponse) {
+	if response.Command == "" {
+		return
 	}
 
-	// Find the best match
-	for pattern, response := range patterns {
-		if contains(input, pattern) {
-			return response.command, response.explanation, response.warning
+	command := strings.ToLower(response.Command)
+
+	// Check for dangerous patterns
+	for _, pattern := range s.dangerousPatterns {
+		if strings.Contains(command, strings.ToLower(pattern)) {
+			warning := fmt.Sprintf("⚠️ DANGER: This command contains '%s' which can be destructive", pattern)
+			if response.Warning != "" {
+				response.Warning = response.Warning + "\n" + warning
+			} else {
+				response.Warning = warning
+			}
+
+			// Lower confidence for dangerous commands
+			if response.Confidence > 0.5 {
+				response.Confidence = 0.5
+			}
+
+			s.logger.WithFields(logrus.Fields{
+				"command": response.Command,
+				"pattern": pattern,
+			}).Warn("Dangerous command pattern detected")
+			break
 		}
 	}
 
-	// Default response
-	return "echo 'Command not recognized. Please try a different request.'",
-		"I couldn't understand your request. Please try rephrasing it or use more specific terms.",
-		"This is a fallback response. Consider using more specific language."
-}
+	// Additional safety checks
+	if strings.Contains(command, "sudo") && !strings.Contains(response.Warning, "sudo") {
+		addWarning := "⚠️ This command requires administrative privileges"
+		if response.Warning != "" {
+			response.Warning = response.Warning + "\n" + addWarning
+		} else {
+			response.Warning = addWarning
+		}
+	}
 
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr ||
-		(len(s) > len(substr) && (s[:len(substr)] == substr ||
-			s[len(s)-len(substr):] == substr ||
-			strings.Contains(strings.ToLower(s), strings.ToLower(substr)))))
+	// Check for recursive operations
+	if strings.Contains(command, "-r") && (strings.Contains(command, "rm") || strings.Contains(command, "chmod") || strings.Contains(command, "chown")) {
+		addWarning := "⚠️ This command will operate recursively on directories"
+		if response.Warning != "" {
+			response.Warning = response.Warning + "\n" + addWarning
+		} else {
+			response.Warning = addWarning
+		}
+	}
 }
