@@ -3,12 +3,13 @@ package feedback
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/kodelint/shell-agent/internal/logger"
-	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/kodelint/shell-agent/internal/logger"
+	"github.com/sirupsen/logrus"
 )
 
 // Feedback represents a single feedback entry from the user.

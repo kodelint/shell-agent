@@ -1,9 +1,10 @@
 package system
 
 import (
+	"runtime"
+
 	"github.com/kodelint/shell-agent/internal/logger"
 	"github.com/spf13/viper"
-	"runtime"
 )
 
 var log = logger.GetLogger()

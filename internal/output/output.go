@@ -2,15 +2,16 @@ package output
 
 import (
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/kodelint/shell-agent/internal/ai"
-	"github.com/kodelint/shell-agent/internal/system"
-	"github.com/manifoldco/promptui"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/kodelint/shell-agent/internal/ai"
+	"github.com/kodelint/shell-agent/internal/system"
+	"github.com/manifoldco/promptui"
 )
 
 var (

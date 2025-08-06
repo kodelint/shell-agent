@@ -2,11 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/kodelint/shell-agent/internal/ai"
 	"github.com/kodelint/shell-agent/internal/logger"
 	"github.com/kodelint/shell-agent/internal/output"
 	"github.com/spf13/cobra"
-	"path/filepath"
 )
 
 var downloadCmd = &cobra.Command{

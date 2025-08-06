@@ -3,14 +3,15 @@ package ai
 import (
 	"context"
 	"fmt"
-	"github.com/kodelint/shell-agent/internal/config"
-	"github.com/kodelint/shell-agent/internal/logger"
-	"github.com/schollz/progressbar/v3"
-	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/kodelint/shell-agent/internal/config"
+	"github.com/kodelint/shell-agent/internal/logger"
+	"github.com/schollz/progressbar/v3"
+	"github.com/sirupsen/logrus"
 )
 
 type ModelInfo struct {

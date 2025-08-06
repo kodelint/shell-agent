@@ -3,17 +3,18 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/kodelint/shell-agent/internal/ai"
 	"github.com/kodelint/shell-agent/internal/feedback"
 	"github.com/kodelint/shell-agent/internal/logger"
 	"github.com/kodelint/shell-agent/internal/output"
 	"github.com/manifoldco/promptui"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
 )
 
 func runInteractiveMode() {
