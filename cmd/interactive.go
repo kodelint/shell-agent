@@ -7,10 +7,14 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/kodelint/shell-agent/internal/ai"
+	"github.com/kodelint/shell-agent/internal/feedback"
 	"github.com/kodelint/shell-agent/internal/logger"
 	"github.com/kodelint/shell-agent/internal/output"
+	"github.com/manifoldco/promptui"
 )
 
 func runInteractiveMode() {
@@ -69,6 +73,9 @@ func runInteractiveMode() {
 			continue
 		}
 
+		// Store the user's original prompt for feedback
+		userPrompt := input
+
 		// Process the command with AI
 		output.PrintThinking()
 		response, err := aiClient.GenerateCommand(input)
@@ -89,12 +96,84 @@ func runInteractiveMode() {
 			if err != nil {
 				output.PrintError(fmt.Sprintf("Command execution failed: %v", err))
 			}
+			// FEEDBACK LOGIC
+			// After execution, prompt the user for feedback
+			feedbackStatus, err := output.PromptForFeedback()
+
+			if err != nil {
+				log.WithError(err).Warn("Failed to get user feedback")
+				continue
+			}
+			// If the user provided feedback, save it
+			if feedbackStatus != "" {
+				// Initialize the feedback manager
+				feedbackManager, err := feedback.NewManager()
+				if err != nil {
+					output.PrintError(fmt.Sprintf("Failed to initialize feedback manager: %v", err))
+					continue
+				}
+
+				// Create a new feedback entry
+				entry := feedback.Feedback{
+					ID:               uuid.New().String(),
+					Timestamp:        time.Now(),
+					UserPrompt:       userPrompt,
+					GeneratedCommand: response.Command,
+					Status:           feedbackStatus,
+				}
+
+				// Save the feedback to the local file
+				if err := feedbackManager.SaveFeedback(entry); err != nil {
+					output.PrintError(fmt.Sprintf("Failed to save feedback: %v", err))
+					continue
+				}
+				output.PrintSuccess("✅ Feedback submitted. Thank you!")
+			}
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.WithError(err).Error("Error reading input")
 	}
+}
+
+func PromptForFeedback() (string, error) {
+	// Options for the user to choose from
+	options := []string{"👍 Worked", "👎 Didn't Work", "❌ Incorrect"}
+
+	// Use `promptui` to create a menu for a rich UI
+	prompt := promptui.Select{
+		Label: "Did this command work for you?",
+		Items: options,
+		Templates: &promptui.SelectTemplates{
+			Label:    "{{ . | bold}}",
+			Active:   "{{ . | bold | green | underline}}",
+			Inactive: "{{ . | white}}",
+			Selected: "{{ . | bold | green | underline}}",
+		},
+		Size: 3,
+	}
+
+	// Run the prompt
+	_, result, err := prompt.Run()
+	if err != nil {
+		if err.Error() == "^C" { // Handle Ctrl+C
+			return "", nil
+		}
+		return "", fmt.Errorf("prompt failed: %w", err)
+	}
+
+	// Map the result to a simple string for the feedback struct
+	switch result {
+	case "👍 Worked":
+		return "worked", nil
+	case "👎 Didn't Work":
+		return "failed", nil
+	case "❌ Incorrect":
+		return "incorrect", nil
+	}
+
+	return "", nil
 }
 
 func runSingleCommand(args []string) {

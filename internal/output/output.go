@@ -2,15 +2,16 @@ package output
 
 import (
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/kodelint/shell-agent/internal/ai"
-	"github.com/kodelint/shell-agent/internal/system"
-	"github.com/manifoldco/promptui"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/kodelint/shell-agent/internal/ai"
+	"github.com/kodelint/shell-agent/internal/system"
+	"github.com/manifoldco/promptui"
 )
 
 var (
@@ -93,6 +94,46 @@ func PrintResponse(response *ai.CommandResponse) {
 	}
 
 	fmt.Println()
+}
+
+// PromptForFeedback asks the user to rate the last command.
+func PromptForFeedback() (string, error) {
+	// Options for the user to choose from
+	options := []string{"👍 Worked", "👎 Didn't Work", "❌ Incorrect"}
+
+	// Use promptui to create a menu for a rich UI
+	prompt := promptui.Select{
+		Label: "Did this command work for you?",
+		Items: options,
+		Templates: &promptui.SelectTemplates{
+			Label:    "{{ . | bold}}",
+			Active:   "{{ . | bold | green | underline}}",
+			Inactive: "{{ . | white}}",
+			Selected: "{{ . | bold | green | underline}}",
+		},
+		Size: 3,
+	}
+
+	// Run the prompt
+	_, result, err := prompt.Run()
+	if err != nil {
+		if err.Error() == "^C" { // Handle Ctrl+C
+			return "", nil
+		}
+		return "", fmt.Errorf("prompt failed: %w", err)
+	}
+
+	// Map the result to a simple string for the feedback struct
+	switch result {
+	case "👍 Worked":
+		return "worked", nil
+	case "👎 Didn't Work":
+		return "failed", nil
+	case "❌ Incorrect":
+		return "incorrect", nil
+	}
+
+	return "", nil
 }
 
 func PrintError(message string) {

@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/kodelint/shell-agent/internal/config"
-	"github.com/kodelint/shell-agent/internal/logger"
-	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/kodelint/shell-agent/internal/config"
+	"github.com/kodelint/shell-agent/internal/logger"
+	"github.com/sirupsen/logrus"
 )
 
 // OllamaClient handles communication with Ollama API

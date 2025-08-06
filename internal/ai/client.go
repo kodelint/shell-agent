@@ -3,12 +3,13 @@ package ai
 import (
 	"context"
 	"fmt"
-	"github.com/kodelint/shell-agent/internal/config"
-	"github.com/kodelint/shell-agent/internal/logger"
-	"github.com/sirupsen/logrus"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/kodelint/shell-agent/internal/config"
+	"github.com/kodelint/shell-agent/internal/logger"
+	"github.com/sirupsen/logrus"
 )
 
 type Client struct {

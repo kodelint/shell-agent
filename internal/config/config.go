@@ -1,11 +1,12 @@
 package config
 
 import (
-	"github.com/kodelint/shell-agent/internal/logger"
-	"github.com/spf13/viper"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/kodelint/shell-agent/internal/logger"
+	"github.com/spf13/viper"
 )
 
 var log = logger.GetLogger()
@@ -142,30 +143,32 @@ func GetDefaultModel() string {
 	return viper.GetString("ai.default_model")
 }
 
-func GetTimeout() int {
-	return viper.GetInt("ai.timeout")
-}
+// For Future use
 
-func GetProvider() string {
-	return viper.GetString("ai.provider")
-}
-
-func GetOllamaHost() string {
-	return viper.GetString("ai.ollama.host")
-}
-
-func GetOllamaPort() int {
-	return viper.GetInt("ai.ollama.port")
-}
-
-func GetMaxTokens() int {
-	return viper.GetInt("ai.max_tokens")
-}
-
-func GetTemperature() float64 {
-	return viper.GetFloat64("ai.temperature")
-}
-
-func GetSystemPrompt() string {
-	return viper.GetString("ai.system_prompt")
-}
+//func GetTimeout() int {
+//	return viper.GetInt("ai.timeout")
+//}
+//
+//func GetProvider() string {
+//	return viper.GetString("ai.provider")
+//}
+//
+//func GetOllamaHost() string {
+//	return viper.GetString("ai.ollama.host")
+//}
+//
+//func GetOllamaPort() int {
+//	return viper.GetInt("ai.ollama.port")
+//}
+//
+//func GetMaxTokens() int {
+//	return viper.GetInt("ai.max_tokens")
+//}
+//
+//func GetTemperature() float64 {
+//	return viper.GetFloat64("ai.temperature")
+//}
+//
+//func GetSystemPrompt() string {
+//	return viper.GetString("ai.system_prompt")
+//}
