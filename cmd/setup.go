@@ -3,15 +3,16 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/kodelint/shell-agent/internal/ai"
-	"github.com/kodelint/shell-agent/internal/config"
-	"github.com/kodelint/shell-agent/internal/output"
-	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"time"
+
+	"github.com/kodelint/shell-agent/internal/ai"
+	"github.com/kodelint/shell-agent/internal/config"
+	"github.com/kodelint/shell-agent/internal/output"
+	"github.com/spf13/cobra"
 )
 
 var setupCmd = &cobra.Command{

@@ -3,13 +3,14 @@ package cmd
 import (
 	"bufio"
 	"fmt"
-	"github.com/kodelint/shell-agent/internal/ai"
-	"github.com/kodelint/shell-agent/internal/logger"
-	"github.com/kodelint/shell-agent/internal/output"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+
+	"github.com/kodelint/shell-agent/internal/ai"
+	"github.com/kodelint/shell-agent/internal/logger"
+	"github.com/kodelint/shell-agent/internal/output"
 )
 
 func runInteractiveMode() {
